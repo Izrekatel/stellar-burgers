@@ -6,6 +6,11 @@ const URL = process.env.BURGER_API_URL;
 const checkResponse = <T>(res: Response): Promise<T> =>
   res.ok ? res.json() : res.json().then((err) => Promise.reject(err));
 
+export const saveTokens = (accessToken: string, refreshToken: string) => {
+  setCookie('accessToken', accessToken);
+  localStorage.setItem('refreshToken', refreshToken);
+};
+
 type TServerResponse<T> = {
   success: boolean;
 } & T;
@@ -30,8 +35,7 @@ export const refreshToken = (): Promise<TRefreshResponse> =>
       if (!refreshData.success) {
         return Promise.reject(refreshData);
       }
-      localStorage.setItem('refreshToken', refreshData.refreshToken);
-      setCookie('accessToken', refreshData.accessToken);
+      saveTokens(refreshData.accessToken, refreshData.refreshToken);
       return refreshData;
     });
 
@@ -153,7 +157,10 @@ export const registerUserApi = (data: TRegisterData) =>
   })
     .then((res) => checkResponse<TAuthResponse>(res))
     .then((data) => {
-      if (data?.success) return data;
+      if (data?.success) {
+        saveTokens(data.accessToken, data.refreshToken);
+        return data;
+      }
       return Promise.reject(data);
     });
 
@@ -172,7 +179,10 @@ export const loginUserApi = (data: TLoginData) =>
   })
     .then((res) => checkResponse<TAuthResponse>(res))
     .then((data) => {
-      if (data?.success) return data;
+      if (data?.success) {
+        saveTokens(data.accessToken, data.refreshToken);
+        return data;
+      }
       return Promise.reject(data);
     });
 
@@ -190,19 +200,26 @@ export const forgotPasswordApi = (data: { email: string }) =>
       return Promise.reject(data);
     });
 
-export const resetPasswordApi = (data: { password: string; token: string }) =>
-  fetch(`${URL}/password-reset/reset`, {
+export const resetPasswordApi = (data: { password: string }) => {
+  const token = getCookie('accessToken');
+
+  if (!token) {
+    return Promise.reject(new Error('Access token is missing'));
+  }
+
+  return fetch(`${URL}/password-reset/reset`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json;charset=utf-8'
     },
-    body: JSON.stringify(data)
+    body: JSON.stringify({ ...data, token })
   })
     .then((res) => checkResponse<TServerResponse<{}>>(res))
     .then((data) => {
       if (data?.success) return data;
       return Promise.reject(data);
     });
+};
 
 type TUserResponse = TServerResponse<{ user: TUser }>;
 
@@ -232,4 +249,11 @@ export const logoutApi = () =>
     body: JSON.stringify({
       token: localStorage.getItem('refreshToken')
     })
-  }).then((res) => checkResponse<TServerResponse<{}>>(res));
+  })
+    .then((res) => checkResponse<TServerResponse<{}>>(res))
+    .then((data) => {
+      if (data?.success) {
+        localStorage.removeItem('refreshToken');
+        setCookie('accessToken', '', { expires: -1 });
+      }
+    });
