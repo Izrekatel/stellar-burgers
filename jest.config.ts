@@ -210,8 +210,8 @@ const config: Config = {
     "default",
     ["./node_modules/jest-html-reporter", {
       pageTitle: "Отчёт по тестированию",
-      outputPath: "public/index.html",
-      boilerplate: "test-report/index.html"
+      outputPath: "coverage/lcov-report/index.html",
+      boilerplate: "coverage/lcov-report/index.html"
     }]
   ],
 };
