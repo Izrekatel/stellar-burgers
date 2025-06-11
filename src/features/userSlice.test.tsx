@@ -56,7 +56,7 @@ describe('тест UserSlice', () => {
 
       const action = { type: loginUserThunk.pending.type };
       const state = userSlice.reducer(initialState, action);
-
+      expect(state.error).toBe(null);
       expect(state.isLoading).toBe(true);
     });
 
@@ -78,6 +78,152 @@ describe('тест UserSlice', () => {
         }); 
        
         await testStore.dispatch(loginUserThunk({email: user.user.email, password: 'password'}));
+        const state = testStore.getState().user;
+        expect(state.isLoading).toBe(false);
+        expect(state.error).toBeTruthy();
+    });
+
+    test('registerUserThunk.fulfilled', async () => {
+        const mockUserResponse = {
+            success: true,
+            refreshToken: user.refreshToken,
+            accessToken: user.accessToken,
+            user: user.user
+        };
+        jest.spyOn(burgerApiFunctions, 'saveTokens').mockReturnValue();
+
+        global.fetch = jest.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockUserResponse),
+          })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        
+        await testStore.dispatch(registerUserThunk({name: user.user.name, email: user.user.email, password: 'password'}));
+        const state = testStore.getState().user;
+        expect(state.error).toBe(null);
+        expect(state.user).toEqual(mockUserResponse.user);
+        expect(state.isLoading).toBe(false);
+    })
+    
+    test('registerUserThunk.pending устанавливает isOrderLoading в true', () => {
+      const initialState = {
+          user: null,
+          isInit: false,
+          isLoading: false,
+          orders: [],
+          isOrdersLoading: false,
+          error: null
+      };
+
+      const action = { type: registerUserThunk.pending.type };
+      const state = userSlice.reducer(initialState, action);
+      expect(state.error).toBe(null);
+      expect(state.isLoading).toBe(true);
+    });
+
+
+
+    test('registerUserThunk.rejected устанавливает isOrderLoading в false и пишет ошибку', async () => {
+        global.fetch = jest.fn(() =>
+            Promise.resolve({
+                ok: false,
+                json: () => Promise.resolve({
+          success: false,
+          message: 'Error'
+        }),
+            })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+       
+        await testStore.dispatch(registerUserThunk({name: user.user.name, email: user.user.email, password: 'password'}));
+        const state = testStore.getState().user;
+        expect(state.isLoading).toBe(false);
+        expect(state.error).toBeTruthy();
+    });
+
+    test('logoutUserThunk.fulfilled', async () => {
+        const mockUserResponse = {
+            success: true,
+            refreshToken: user.refreshToken,
+            accessToken: user.accessToken,
+            user: user.user
+        };
+        jest.spyOn(burgerApiFunctions, 'saveTokens').mockReturnValue();
+        Object.defineProperty(global, 'localStorage', {
+          value: {
+            getItem: jest.fn(),
+            removeItem: jest.fn(),
+          },
+          writable: true
+        });
+
+        global.fetch = jest.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockUserResponse),
+          })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        
+        await testStore.dispatch(loginUserThunk({email: user.user.email, password: 'password'}));
+        const stateAfterLogin = testStore.getState().user;
+        expect(stateAfterLogin.user).toEqual(mockUserResponse.user);
+        
+        global.fetch = jest.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(),
+          })
+        ) as jest.Mock;
+
+        await testStore.dispatch(logoutUserThunk());
+        const stateAfterLogout = testStore.getState().user;
+        expect(stateAfterLogout.isLoading).toBe(false);
+        expect(stateAfterLogout.error).toBe(null);
+        expect(stateAfterLogout.user).toBe(null);
+    })
+    
+    test('logoutUserThunk.pending устанавливает isOrderLoading в true', () => {
+      const initialState = {
+          user: null,
+          isInit: false,
+          isLoading: false,
+          orders: [],
+          isOrdersLoading: false,
+          error: null
+      };
+      const action = { type: logoutUserThunk.pending.type };
+      const state = userSlice.reducer(initialState, action);
+      expect(state.error).toBe(null);
+      expect(state.isLoading).toBe(true);
+    });
+
+    test('logoutUserThunk.rejected устанавливает isOrderLoading в false и пишет ошибку', async () => {
+        global.fetch = jest.fn(() =>
+            Promise.resolve({
+                ok: false,
+                json: () => Promise.resolve({
+          success: false,
+          message: 'Error'
+        }),
+            })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        await testStore.dispatch(logoutUserThunk());
         const state = testStore.getState().user;
         expect(state.isLoading).toBe(false);
         expect(state.error).toBeTruthy();
