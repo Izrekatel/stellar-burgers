@@ -1,71 +1,83 @@
 describe('проверяем доступность приложения', function() {
-  it('сервис должен быть доступен по адресу localhost:4000', function() {
-    cy.visit('http://localhost:4000'); 
+  it('сервис должен быть доступен', function() {
+    cy.visit('/'); 
   });
 });
 
 describe('Burger Ingredient', () => {
-  beforeEach(() => {
-    // Загружаем фикстуру из файла fixtures/ingredients.json
-    cy.fixture('ingredients').then((ingredients) => {
-      // Перехватываем GET запрос
+  beforeEach(function() {
+    // Загружаем фикстуры
+    cy.fixture('ingredients').as('ingredients');
+    cy.fixture('user').as('user');
+    cy.fixture('order').as('order');
+    
+    // Перехватываем запросы
+    cy.get('@ingredients').then((ingredients) => {
       cy.intercept('GET', '/api/ingredients', {
         statusCode: 200,
         body: ingredients
       }).as('getIngredients');
     });
-    cy.visit('http://localhost:4000'); // открываем страницу
-    cy.wait('@getIngredients'); // ждем запрос
-    /// Очищаем куки
-    Cypress.Cookies.debug(true);
-    cy.clearCookies();
-    // Загружаем фикстуру из файла fixtures/user.json
-    cy.fixture('user').then((user) => {
-      // Перехватываем POST запрос
+    cy.get('@user').then((user) => {
       cy.intercept('POST', 'api/auth/login', {
         statusCode: 201,
         body: user
       }).as('getUser');
     });
-    cy.fixture('order').then((order) => {
-      // Перехватываем POST запрос
+    cy.get('@order').then((order) => {
       cy.intercept('POST', 'api/orders', {
         statusCode: 201,
         body: order
       }).as('orderBurger');
     });
-    cy.visit('http://localhost:4000/login'); // открываем страницу
-    cy.get('input[name="email"]').type('email@email.com');
-    cy.get('input[name="password"]').type('password');
-    cy.get('button[type="submit"]').click();
-    cy.wait('@getUser'); // ждем запрос
-  });
 
-  it('Добавление ингредиентов в список конструктора', () => {
+    // открываем страницу
+    cy.visit('/');
+    cy.wait('@getIngredients');
+    
+    /// Очищаем куки
+    Cypress.Cookies.debug(true);
+    cy.clearCookies();
+    
+    // Авторизуемся
+    cy.visit('login');
+    cy.get('@user').then((user) => {
+      cy.get('input[name="email"]').type(user.user.email);
+      cy.get('input[name="password"]').type(user.user.password);
+    });
+    cy.get('button[type="submit"]').click();
+    cy.wait('@getUser');
+    });
+
+  it('Добавление ингредиентов в список конструктора', function() {
     // Добавляем первую булку
-    cy.get('[data-cy="ingredient-643d69a5c3f7b9001cfa093c"] button').click();
-    cy.get('.constructor-element_pos_top').find('span').contains('Краторная булка N-200i (верх)');
-    cy.get('.constructor-element_pos_bottom').find('span').contains('Краторная булка N-200i (низ)');
+    const bun = this.ingredients.data[0];
+    const main = this.ingredients.data[1];
+    const sauce = this.ingredients.data[2];
+    cy.get(`[data-cy="ingredient-${bun._id}"] button`).click();
+    cy.get('.constructor-element_pos_top').find('span').contains(`${bun.name} (верх)`);
+    cy.get('.constructor-element_pos_bottom').find('span').contains(`${bun.name} (низ)`);
 
     // Добавляем начинку
-    cy.get('[data-cy="ingredient-643d69a5c3f7b9001cfa0941"] button').click();
-    cy.get('.constructor-element .constructor-element__row').find('span').contains('Биокотлета из марсианской Магнолии');
+    cy.get(`[data-cy="ingredient-${main._id}"] button`).click();
+    cy.get('.constructor-element .constructor-element__row').find('span').contains(main.name);
 
     // Добавляем соус
-    cy.get('[data-cy="ingredient-643d69a5c3f7b9001cfa0942"] button').click();
-    cy.get('.constructor-element .constructor-element__row').find('span').contains('Соус Spicy-X');
+    cy.get(`[data-cy="ingredient-${sauce._id}"] button`).click();
+    cy.get('.constructor-element .constructor-element__row').find('span').contains(sauce.name);
   });
   
-  it('Проверка модального окна ингредиента', () => {
+  it('Проверка модального окна ингредиента', function() {
     cy.get('[id="modals"]').should('be.empty');
     // Открываем модальное окно ингредиента
-    cy.get('[data-cy="ingredient-643d69a5c3f7b9001cfa093c"]').click();
+    const bun = this.ingredients.data[0];
+    cy.get(`[data-cy="ingredient-${bun._id}"]`).click();
     cy.get('[id="modals"]').should('not.be.empty');
     // Кликаем на кнопку закрытия
     cy.get('[id="modals"]').find('button').click();
     cy.get('[id="modals"]').should('be.empty');
     // Кликаем на оверлэй
-    cy.get('[data-cy="ingredient-643d69a5c3f7b9001cfa093c"]').click();
+    cy.get(`[data-cy="ingredient-${bun._id}"]`).click();
     cy.get('[data-cy="modal-overlay"]').click({ force: true });
     cy.get('[id="modals"]').should('be.empty');
   });
@@ -79,14 +91,15 @@ describe('Burger Ingredient', () => {
     });
   });
 
-  it('Заказ бургера', () => {
+  it('Заказ бургера', function() {
+    const bun = this.ingredients.data[0];
     cy.get('[id="modals"]').should('be.empty');
-    cy.get('[data-cy="ingredient-643d69a5c3f7b9001cfa093c"] button').click();
+    cy.get(`[data-cy="ingredient-${bun._id}"] button`).click();
     cy.get('[data-cy="order-button"]').click();
     cy.wait('@orderBurger');
     // проверяем что модальное окно открыто и отобрапжается номер заказа
     cy.get('[id="modals"]').should('not.be.empty');
-    cy.get('[data-cy="modal-order-number"]').should('have.text', '80690');
+    cy.get('[data-cy="modal-order-number"]').should('have.text', this.order.order.number);
     cy.get('[id="modals"]').find('button').click();
     // проверяем что модальное окно закрыто
     cy.get('[id="modals"]').should('be.empty');
