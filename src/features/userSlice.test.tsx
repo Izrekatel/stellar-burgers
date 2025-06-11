@@ -12,6 +12,7 @@ import {
   userSlice
 } from './userSlice';
 import { user } from './test-data/users';
+import * as cookieFunctions from '../utils/cookie';
 import * as burgerApiFunctions from '../utils/burger-api';
 import {configureStore } from '@reduxjs/toolkit';
 import {expect, test, describe} from '@jest/globals';
@@ -228,4 +229,66 @@ describe('тест UserSlice', () => {
         expect(state.isLoading).toBe(false);
         expect(state.error).toBeTruthy();
     });
+
+    test('fetchUserThunk.fulfilled', async () => {
+        const mockUserResponse = {
+            success: true,
+            user: user.user
+        };
+        jest.spyOn(cookieFunctions, 'getCookie').mockReturnValue("");
+
+        global.fetch = jest.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mockUserResponse),
+          })
+        ) as jest.Mock;
+        
+       const store = configureStore({
+            reducer: rootReducer,
+        }); 
+        
+        await store.dispatch(fetchUserThunk());
+        const state = store.getState().user;
+        expect(state.user).toEqual(mockUserResponse.user);
+        expect(state.isLoading).toBe(false);
+        expect(state.error).toBe(null);
+    })
+    
+    test('fetchUserThunk.pending устанавливает isOrderLoading в true', () => {
+      const initialState = {
+          user: null,
+          isInit: false,
+          isLoading: false,
+          orders: [],
+          isOrdersLoading: false,
+          error: null
+      };
+      const action = { type: fetchUserThunk.pending.type };
+      const state = userSlice.reducer(initialState, action);
+      expect(state.error).toBe(null);
+      expect(state.isLoading).toBe(true);
+    });
+
+    test('fetchUserThunk.rejected устанавливает isOrderLoading в false и пишет ошибку', async () => {
+        global.fetch = jest.fn(() =>
+            Promise.resolve({
+                ok: false,
+                json: () => Promise.resolve({
+          success: false,
+          message: 'Error'
+        }),
+            })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        await testStore.dispatch(fetchUserThunk());
+        const state = testStore.getState().user;
+        expect(state.isLoading).toBe(false);
+        expect(state.error).toBeTruthy();
+    });
+
+
 });
