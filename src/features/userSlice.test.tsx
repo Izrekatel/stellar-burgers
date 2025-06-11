@@ -420,4 +420,62 @@ describe('тест UserSlice', () => {
         expect(state.error).toBeTruthy();
     });
 
+    test('resetPasswordThunk.fulfilled', async () => {
+        const mocResetPasswordResponse = {
+            success: true
+        };
+        jest.spyOn(cookieFunctions, 'getCookie').mockReturnValue('accessToken');
+
+        global.fetch = jest.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mocResetPasswordResponse),
+          })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        
+        await testStore.dispatch(resetPasswordThunk('NewPassword'));
+        const state = testStore.getState().user;
+        expect(state.isLoading).toBe(false);
+        expect(state.error).toBe(null);
+    })
+    
+    test('resetPasswordThunk.pending устанавливает isOrderLoading в true', () => {
+      const initialState = {
+          user: null,
+          isInit: false,
+          isLoading: false,
+          orders: [],
+          isOrdersLoading: false,
+          error: null
+      };
+      const action = { type: resetPasswordThunk.pending.type };
+      const state = userSlice.reducer(initialState, action);
+      expect(state.error).toBe(null);
+      expect(state.isLoading).toBe(true);
+    });
+
+    test('resetPasswordThunk.rejected устанавливает isOrderLoading в false и пишет ошибку', async () => {
+        global.fetch = jest.fn(() =>
+            Promise.resolve({
+                ok: false,
+                json: () => Promise.resolve({
+          success: false,
+          message: 'Error'
+        }),
+            })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        await testStore.dispatch(resetPasswordThunk('NewPassword'));
+        const state = testStore.getState().user;
+        expect(state.isLoading).toBe(false);
+        expect(state.error).toBeTruthy();
+    });
+
 });
