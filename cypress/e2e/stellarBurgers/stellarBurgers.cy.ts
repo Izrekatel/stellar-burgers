@@ -41,7 +41,6 @@ describe('Burger Ingredient', () => {
     cy.wait('@getUser'); // ждем запрос
   });
 
-
   it('Добавление ингредиентов в список конструктора', () => {
     // Добавляем первую булку
     cy.get('[data-cy="ingredient-643d69a5c3f7b9001cfa093c"] button').click();

@@ -9,10 +9,10 @@ import {
   constructorSlice
 } from './constructorSlice';
 import { ingredients } from './test-data/ingredients';
-import { order } from './test-data/orderS';
+import { order } from './test-data/orders';
 import * as cookieUtils from '../utils/cookie';
 import {configureStore } from '@reduxjs/toolkit';
-import {expect, test, describe, jest} from '@jest/globals';
+import {expect, test, describe} from '@jest/globals';
 
 describe('тест constructorSlice', () => {
     test('добавление ингредиента', () => {

@@ -1,10 +1,9 @@
-import { getIngredients, getIngredientsLoading } from '../services/selectors';
-import { rootReducer, store } from '../services/store';
+import { rootReducer } from '../services/store';
 import { ingredientsSlice, fetchIngredients } from './ingredientsSlice';
 import { ingredientsWithoutID } from './test-data/ingredients';
 import {configureStore } from '@reduxjs/toolkit';
 
-import {expect, test, describe, jest} from '@jest/globals';
+import {expect, test, describe} from '@jest/globals';
 
 describe('тест ingredientsSlice', () => {
 
