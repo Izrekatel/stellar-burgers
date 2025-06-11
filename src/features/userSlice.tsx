@@ -88,6 +88,7 @@ export const userSlice = createSlice({
       // Логин
       .addCase(loginUserThunk.pending, (state) => {
         state.isLoading = true;
+        state.error = null;
       })
       .addCase(loginUserThunk.rejected, (state, action) => {
         state.isLoading = false;
