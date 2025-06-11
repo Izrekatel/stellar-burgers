@@ -362,4 +362,62 @@ describe('тест UserSlice', () => {
         expect(state.isLoading).toBe(false);
         expect(state.error).toBeTruthy();
     });
+
+    test('forgotPasswordThunk.fulfilled', async () => {
+        const mocForgotPasswordResponse = {
+            success: true
+        };
+
+        global.fetch = jest.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mocForgotPasswordResponse),
+          })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        
+        await testStore.dispatch(forgotPasswordThunk(user.user.email));
+        const state = testStore.getState().user;
+        expect(state.isLoading).toBe(false);
+        expect(state.error).toBe(null);
+    })
+    
+    test('forgotPasswordThunk.pending устанавливает isOrderLoading в true', () => {
+      const initialState = {
+          user: null,
+          isInit: false,
+          isLoading: false,
+          orders: [],
+          isOrdersLoading: false,
+          error: null
+      };
+      const action = { type: forgotPasswordThunk.pending.type };
+      const state = userSlice.reducer(initialState, action);
+      expect(state.error).toBe(null);
+      expect(state.isLoading).toBe(true);
+    });
+
+    test('forgotPasswordThunk.rejected устанавливает isOrderLoading в false и пишет ошибку', async () => {
+        global.fetch = jest.fn(() =>
+            Promise.resolve({
+                ok: false,
+                json: () => Promise.resolve({
+          success: false,
+          message: 'Error'
+        }),
+            })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        await testStore.dispatch(forgotPasswordThunk(user.user.email));
+        const state = testStore.getState().user;
+        expect(state.isLoading).toBe(false);
+        expect(state.error).toBeTruthy();
+    });
+
 });
