@@ -1,4 +1,3 @@
-import { getConstructorIngredients } from '../services/selectors';
 import { rootReducer } from '../services/store';
 import {
   loginUserThunk,
@@ -12,6 +11,7 @@ import {
   userSlice
 } from './userSlice';
 import { user } from './test-data/users';
+import { orders } from './test-data/orders';
 import * as cookieFunctions from '../utils/cookie';
 import * as burgerApiFunctions from '../utils/burger-api';
 import {configureStore } from '@reduxjs/toolkit';
@@ -478,4 +478,65 @@ describe('тест UserSlice', () => {
         expect(state.error).toBeTruthy();
     });
 
+    test('getOrdersThunk.fulfilled', async () => {
+        const mocGetOrdersdResponse = {
+            success: true,
+            orders: orders, 
+            total: 2,
+            totalToday: 1
+        };
+        jest.spyOn(cookieFunctions, 'getCookie').mockReturnValue('accessToken');
+
+        global.fetch = jest.fn(() =>
+          Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(mocGetOrdersdResponse),
+          })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        
+        await testStore.dispatch(getOrdersThunk());
+        const state = testStore.getState().user;
+        expect(state.orders).toBe(orders);
+        expect(state.isOrdersLoading).toBe(false);
+        expect(state.error).toBe(null);
+    })
+    
+    test('getOrdersThunk.pending устанавливает isOrderLoading в true', () => {
+      const initialState = {
+          user: null,
+          isInit: false,
+          isLoading: false,
+          orders: [],
+          isOrdersLoading: false,
+          error: null
+      };
+      const action = { type: getOrdersThunk.pending.type };
+      const state = userSlice.reducer(initialState, action);
+      expect(state.error).toBe(null);
+      expect(state.isOrdersLoading).toBe(true);
+    });
+
+    test('getOrdersThunk.rejected устанавливает isOrderLoading в false и пишет ошибку', async () => {
+        global.fetch = jest.fn(() =>
+            Promise.resolve({
+                ok: false,
+                json: () => Promise.resolve({
+          success: false,
+          message: 'Error'
+        }),
+            })
+        ) as jest.Mock;
+        
+       const testStore = configureStore({
+            reducer: rootReducer,
+        }); 
+        await testStore.dispatch(getOrdersThunk());
+        const state = testStore.getState().user;
+        expect(state.isOrdersLoading).toBe(false);
+        expect(state.error).toBeTruthy();
+    });
 });
